@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "hammx"
 version = "0.1.0"
 description = "async rest like a boss"
-readme = "README.rst"
+readme = {file = "README.md", content-type = "text/markdown"}
 authors = [
     {name = "Steve Ryherd", email = "steve.ryherd@gmail.com"}
 ]
