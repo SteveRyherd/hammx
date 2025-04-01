@@ -1,46 +1,82 @@
 ::
 
-     _                                   _     
-    | |                                 | |    
-    | |__  _____ ____  ____   ___   ____| |  _ 
-    |  _ \(____ |    \|    \ / _ \ / ___) |_/ )
-    | | | / ___ | | | | | | | |_| ( (___|  _ ( 
-    |_| |_\_____|_|_|_|_|_|_|\___/ \____)_| \_)
+ __   __     ___     __    __   __    __   _    _ 
+|  |_|  |   / _ \   |   \/   | |   \/   | |  \/  |
+ )  _  (   ) (_) (   )      (   )      (   )    ( 
+|__| |__| |__) (__| (__/\/\__) (__/\/\__) |__/\__|
+                                     
+                                     
+                                     
+Hammx is a fun module lets you deal with rest APIs by converting them into dead simple programmatic APIs.
+It uses the popular ``httpx`` module to provide full-fledged async rest experience.
 
-Hammock is a fun module lets you deal with rest APIs by converting them into dead simple programmatic APIs.
-It uses popular ``requests`` module in backyard to provide full-fledged rest experience.
+It is a fork of the original ``hammock`` library, but with async capabilities.
 
 Proof
 -----
 
 Let's play with github::
 
-    >>> from hammock import Hammock as Github
+    >>> import asyncio
+    >>> from hammx import Hammx as Github
 
-    >>> # Let's create the first chain of hammock using base api url
-    >>> github = Github('https://api.github.com')
-
-    >>> # Ok, let the magic happens, ask github for hammock watchers
-    >>> resp = github.repos('kadirpekel', 'hammock').watchers.GET()
-
-    >>> # now you're ready to take a rest for the rest the of code :)
-    >>> for watcher in resp.json: print watcher.get('login')
-    kadirpekel
+    >>> async def main():
+    ...     # Let's create the first chain of hammx using base api url
+    ...     github = Github('https://api.github.com')
+    ...
+    ...     # Ok, let the magic happens, ask github for hammx watchers
+    ...     resp = await github.repos('steveryherd', 'hammx').watchers.GET()
+    ...
+    ...     # now you're ready to take a rest for the rest the of code :)
+    ...     for watcher in resp.json(): print(watcher.get('login'))
+    ...
+    ...     # Don't forget to close the client when done
+    ...     await github.aclose()
+    ...
+    >>> asyncio.run(main())
+    steveryherd
     ...
     ..
     .
 
 Not convinced? This is also how you can watch this project to see its future capabilities::
 
-
-    >>> github.user.watched('kadirpekel', 'hammock').PUT(auth=('<user>', '<pass>'),
-                                                        headers={'content-length': '0'})
+    >>> async def watch_project():
+    ...     github = Github('https://api.github.com')
+    ...     response = await github.user.watched('steveryherd', 'hammx').PUT(
+    ...         auth=('<user>', '<pass>'),
+    ...         headers={'content-length': '0'}
+    ...     )
+    ...     print(response)
+    ...     await github.aclose()
+    ... 
+    >>> asyncio.run(watch_project())
     <Response [204]>
+
+Using as a context manager (recommended)::
+
+    >>> async def using_context_manager():
+    ...     # Context managers automatically close the client when the block exits
+    ...     async with Github('https://api.github.com') as github:
+    ...         resp = await github.repos('steveryherd', 'hammx').watchers.GET()
+    ...         for watcher in resp.json():
+    ...             print(watcher.get('login'))
+    ... 
+    >>> asyncio.run(using_context_manager())
+    
+    # You can also create the context manager first and use it later
+    >>> github_api = Github('https://api.github.com')
+    >>> async def use_prepared_context():
+    ...     async with github_api as client:
+    ...         # Client is ready to use and will be automatically closed
+    ...         return await client.repos('steveryherd', 'hammx').stargazers.GET()
+    ... 
+    >>> asyncio.run(use_prepared_context())
 
 How?
 ----
 
-``Hammock`` is a thin wrapper over ``requests`` module, you are still with it. But it simplifies your life
+``Hammx`` is a thin wrapper over ``httpx`` module, you are still with it. But it simplifies your life
 by letting you place your variables into URLs naturally by using object notation way. Also you can wrap some
 url fragments into objects for improving code re-use. For example;
 
@@ -48,65 +84,89 @@ url fragments into objects for improving code re-use. For example;
 Take these;
 
     >>> base_url = 'https://api.github.com'
-    >>> user = 'kadirpekel'
-    >>> repo = 'hammock'
+    >>> user = 'steveryherd'
+    >>> repo = 'hammx'
 
-Without ``Hammock``, using pure ``requests`` module you have to generate your urls by hand using string formatting::
+Without ``Hammx``, using pure ``httpx`` module you have to generate your urls by hand using string formatting::
 
-    >>> requests.get("%s/repos/%s/%s/watchers" % (base_url, user, repo))
+    >>> await httpx.AsyncClient().get("%s/repos/%s/%s/watchers" % (base_url, user, repo))
 
-With ``Hammock``, you don't have to deal with string formatting. You can wrap ``base_url`` for code reuse
+With ``Hammx``, you don't have to deal with string formatting. You can wrap ``base_url`` for code reuse
 and easily map variables to urls. This is just cleaner::
 
-    >>> github = hammock.Hammock(base_url)
-    >>> github.repos(user, repo).watchers.GET()
-    >>> github.user.watched(user, repo).PUT()  # reuse!
+    >>> github = hammx.Hammx(base_url)
+    >>> await github.repos(user, repo).watchers.GET()
+    >>> await github.user.watched(user, repo).PUT()  # reuse!
 
 Install
 -------
 
-The best way to install ``Hammock`` is using pypi repositories via ``easy_install`` or ``pip``::
+The best way to install ``Hammx`` is using pypi repositories via ``pip``::
 
-    $ pip install hammock
+    $ pip install hammx
+
+Recommended Usage
+----------------
+
+Using the async context manager pattern is recommended for proper resource cleanup::
+
+    async with hammx.Hammx('https://api.example.com') as client:
+        response = await client.users.GET()
+        # Process response here
+    # Client is automatically closed when leaving the context
+
+If you need to use the client without a context manager, always close it explicitly::
+
+    client = hammx.Hammx('https://api.example.com')
+    try:
+        response = await client.users.GET()
+        # Process response
+    finally:
+        # Always close the client to release resources
+        await client.aclose()
 
 Documentation
 -------------
 
-``Hammock`` is a magical, polymorphic(!), fun and simple class which helps you generate RESTful urls
-and lets you request them using ``requests`` module in an easy and slick way.
+``Hammx`` is a magical, polymorphic(!), fun and simple class which helps you generate RESTful urls
+and lets you request them using ``httpx`` module in an easy and slick way.
 
-Below the all phrases make requests to the same url of 'http://localhost:8000/users/foo/posts/bar/comments'.
+Below the all phrases build the same url of 'http://localhost:8000/users/foo/posts/bar/comments'.
 Note that all of them are valid but some of them are nonsense in their belonging context::
 
-    >>> import hammock
-    >>> api = hammock.Hammock('http://localhost:8000')
-    >>> api.users('foo').posts('bar').comments.GET()
-    <Response [200]>
-    >>> api.users.foo.posts('bar').GET('comments')
-    <Response [200]>
-    >>> api.users.foo.posts.bar.comments.GET()
-    <Response [200]>
-    >>> api.users('foo', 'posts', 'comments').GET()
-    <Response [200]>
-    >>> api('users')('foo', 'posts').GET('bar', 'comments')
-    <Response [200]>
+    >>> import hammx
+    >>> api = hammx.Hammx('http://localhost:8000')
+    >>> # All these build the same URL:
+    >>> api.users('foo').posts('bar').comments
+    >>> api.users.foo.posts('bar').comments
+    >>> api.users.foo.posts.bar.comments
+    >>> api.users('foo', 'posts', 'comments')
+    >>> api('users')('foo', 'posts')('bar', 'comments')
     >>> # Any other combinations ...
 
-``Hammock`` class instance provides `requests` module's all http methods binded on itself as uppercased version
+``Hammx`` class instance provides ``httpx`` module's all http methods binded on itself as uppercased version
 while dropping the first arg ``url`` in replacement of ``*args`` to let you to continue appending url components.
 
-Also you can continue providing any keyword argument for corresponding http verb method of ``requests`` module::
+Also you can continue providing any keyword argument for corresponding http verb method of ``httpx`` module::
 
-    Hammock.[GET, HEAD, OPTIONS, POST, PUT, PATCH, DELETE](*args, **kwargs)
+    await Hammx.[GET, HEAD, OPTIONS, POST, PUT, PATCH, DELETE](*args, **kwargs)
 
-Return type is the same ``Response`` object ``requests`` module provides.
+Return type is the same ``Response`` object ``httpx`` module provides.
 
 Here is some more real world applicable example which uses twitter api::
 
-    >>> import hammock
-    >>> twitter = hammock.Hammock('https://api.twitter.com/1')
-    >>> tweets = twitter.statuses('user_timeline.json').GET(params={'screen_name':'kadirpekel', 'count':'10'}).json
-    >>> for tweet in tweets: print tweet.get('text')
+    >>> import asyncio
+    >>> import hammx
+    >>> async def get_tweets():
+    ...     twitter = hammx.Hammx('https://api.twitter.com/1.1')
+    ...     resp = await twitter.statuses('user_timeline.json').GET(
+    ...         params={'screen_name':'steveryherd', 'count':'10'}
+    ...     )
+    ...     tweets = resp.json()
+    ...     for tweet in tweets: print(tweet.get('text'))
+    ...     await twitter.aclose()
+    ... 
+    >>> asyncio.run(get_tweets())
     my tweets
     ...
     ..
@@ -115,40 +175,53 @@ Here is some more real world applicable example which uses twitter api::
 You might also want to use sessions. Let's take a look at the JIRA example below which maintains basic
 auth credentials through several http requests::
 
-    >>> import hammock
+    >>> import asyncio
+    >>> import hammx
 
-    >>> # You can configure a session by providing keyword args to `Hammock` constructor to initiate builtin `requests` session
-    >>> # This sample below shows the use of auth credentials through several requests by intitiating a embedded session
-    >>> jira = hammock.Hammock('https://jira.atlassian.com/rest/api/latest', auth=('<user>', '<pass>'))
+    >>> async def jira_example():
+    ...     # You can configure a session by providing keyword args to `Hammx` constructor
+    ...     # This sample below shows the use of auth credentials through several requests
+    ...     jira = hammx.Hammx('https://jira.atlassian.com/rest/api/latest', 
+    ...                         auth=('<user>', '<pass>'))
+    ...
+    ...     my_issue = 'JRA-9'
+    ...
+    ...     # Let's get a jira issue. No auth credentials provided explicitly since parent
+    ...     # hammx already has a httpx.AsyncClient session configured.
+    ...     issue = await jira.issue(my_issue).GET()
+    ...
+    ...     # Now watch the issue again using with the same session
+    ...     watched = await jira.issue(my_issue).watchers.POST(params={'name': '<user>'})
+    ...
+    ...     print(watched)
+    ...     
+    ...     # Close the client when done
+    ...     await jira.aclose()
+    ...
+    >>> asyncio.run(jira_example())
 
-    >>> my_issue = 'JRA-9'
-
-    >>> # Let's get a jira issue. No auth credentials provided explicitly since parent
-    >>> # hammock already has a `requests` session configured.
-    >>> issue = jira.issue(my_issue).GET()
-
-    >>> # Now watch the issue again using with the same session
-    >>> watched = jira.issue(my_issue).watchers.POST(params={'name': '<user>'})
-
-    >>> print(watched)
-
-Also keep in mind that if you want a trailing slash at the end of  URLs generated by ``Hammock``
-you should pass ``append_slash`` kewyword argument as ``True`` while constructing ``Hammock``.
+Also keep in mind that if you want a trailing slash at the end of URLs generated by ``Hammx``
+you should pass ``append_slash`` kewyword argument as ``True`` while constructing ``Hammx``.
 For example::
 
-    >>> api = hammock.Hammock('http://localhost:8000', append_slash=True)
-    >>> print (api.foo.bar)  # Note that trailing slash
+    >>> api = hammx.Hammx('http://localhost:8000', append_slash=True)
+    >>> print(api.foo.bar)  # Note that trailing slash
     'http://localhost:8000/foo/bar/'
 
 Contributors
 ------------
 
-* @maraujop (Miguel Araujo)
-* @rubik (Michele Lacchia)
+* Original Hammock by Kadir Pekel (@kadirpekel)
+* Original contributors to Hammock:
+    * Miguel Araujo (@maraujop)
+    * Michele Lacchia (@rubik)
+* Contributions to Hammx:
+    * Steve Ryherd (@steveryherd)
 
 Licence
 -------
-Copyright (c) 2012 Kadir Pekel.
+
+Copyright (c) 2025
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the 'Software'), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

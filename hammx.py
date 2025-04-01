@@ -1,9 +1,9 @@
-import requests
+import httpx
 import copy
 
 
-class Hammock(object):
-    """Chainable, magical class helps you make requests to RESTful services"""
+class Hammx(object):
+    """Chainable, magical class helps you make async requests to RESTful services"""
 
     HTTP_METHODS = ['get', 'options', 'head', 'post', 'put', 'patch', 'delete']
 
@@ -14,21 +14,15 @@ class Hammock(object):
             name -- name of node
             parent -- parent node for chaining
             append_slash -- flag if you want a trailing slash in urls
-            **kwargs -- `requests` session be initiated with if any available
+            **kwargs -- `httpx.AsyncClient` be initiated with if any available
         """
         self._name = name
         self._parent = parent
         self._append_slash = append_slash
-        self._session = requests.session()
-        for k, v in kwargs.items():
-            orig = getattr(self._session, k)  # Let it throw exception
-            if isinstance(orig, dict):
-                orig.update(v)
-            else:
-                setattr(self._session, k, v)
+        self._session = httpx.AsyncClient(**kwargs)
 
     def _spawn(self, name):
-        """Returns a shallow copy of current `Hammock` instance as nested child
+        """Returns a shallow copy of current `Hammx` instance as nested child
 
         Arguments:
             name -- name of child
@@ -40,7 +34,7 @@ class Hammock(object):
 
     def __getattr__(self, name):
         """Here comes some magic. Any absent attribute typed within class
-        falls here and return a new child `Hammock` instance in the chain.
+        falls here and return a new child `Hammx` instance in the chain.
         """
         # Ignore specials (Otherwise shallow copying causes infinite loops)
         if name.startswith('__'):
@@ -48,7 +42,7 @@ class Hammock(object):
         return self._spawn(name)
 
     def __iter__(self):
-        """Iterator implementation which iterates over `Hammock` chain."""
+        """Iterator implementation which iterates over `Hammx` chain."""
         current = self
         while current:
             if current._name:
@@ -56,7 +50,7 @@ class Hammock(object):
             current = current._parent
 
     def _chain(self, *args):
-        """This method converts args into chained Hammock instances
+        """This method converts args into chained Hammx instances
 
         Arguments:
             *args -- array of string representable objects
@@ -66,19 +60,19 @@ class Hammock(object):
             chain = chain._spawn(str(arg))
         return chain
 
-    def _close_session(self):
+    async def aclose(self):
         """Closes session if exists"""
         if self._session:
-            self._session.close()
+            await self._session.aclose()
 
     def __call__(self, *args):
-        """Here comes second magic. If any `Hammock` instance called it
-        returns a new child `Hammock` instance in the chain
+        """Here comes second magic. If any `Hammx` instance called it
+        returns a new child `Hammx` instance in the chain
         """
         return self._chain(*args)
 
     def _url(self, *args):
-        """Converts current `Hammock` chain into a url string
+        """Converts current `Hammx` chain into a url string
 
         Arguments:
             *args -- extra url path components to tail
@@ -90,22 +84,30 @@ class Hammock(object):
         return url
 
     def __repr__(self):
-        """ String representaion of current `Hammock` chain"""
+        """String representation of current `Hammx` chain"""
         return self._url()
 
-    def _request(self, method, *args, **kwargs):
+    async def _request(self, method, *args, **kwargs):
         """
-        Makes the HTTP request using requests module
+        Makes the HTTP request using httpx module
         """
-        return self._session.request(method, self._url(*args), **kwargs)
+        return await self._session.request(method, self._url(*args), **kwargs)
+
+    async def __aenter__(self):
+        """Support for async context manager protocol"""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Support for async context manager protocol"""
+        await self.aclose()
 
 
 def bind_method(method):
-    """Bind `requests` module HTTP verbs to `Hammock` class as
-    static methods."""
-    def aux(hammock, *args, **kwargs):
-        return hammock._request(method, *args, **kwargs)
+    """Bind `httpx` module HTTP verbs to `Hammx` class as
+    async methods."""
+    async def aux(hammx, *args, **kwargs):
+        return await hammx._request(method, *args, **kwargs)
     return aux
 
-for method in Hammock.HTTP_METHODS:
-    setattr(Hammock, method.upper(), bind_method(method))
+for method in Hammx.HTTP_METHODS:
+    setattr(Hammx, method.upper(), bind_method(method))
